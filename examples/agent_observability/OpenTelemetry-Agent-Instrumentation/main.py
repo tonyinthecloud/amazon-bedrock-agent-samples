@@ -16,6 +16,9 @@ def invoke_bedrock_agent(
     # Create Bedrock client
     bedrock_rt_client = boto3.client("bedrock-agent-runtime")
     use_streaming = kwargs.get("streaming", False)
+    is_inline_agent = kwargs.get("is_inline_agent", False)
+    
+    # Base parameters for both agent types
     invoke_params = {
         "inputText": inputText,
         "agentId": agentId,
@@ -24,13 +27,28 @@ def invoke_bedrock_agent(
         "enableTrace": True,  # Required for instrumentation
     }
 
-    # Add streaming configurations if needed
-    if use_streaming:
-        invoke_params["streamingConfigurations"] = {
-            "applyGuardrailInterval": 10,
-            "streamFinalResponse": use_streaming,
-        }
-    response = bedrock_rt_client.invoke_agent(**invoke_params)
+    # Add inline agent specific parameters if needed
+    if is_inline_agent:
+        invoke_params.update({
+            "agentVersion": kwargs.get("agentVersion", "DRAFT"),
+            "actionGroupExecutor": kwargs.get("actionGroupExecutor", {}),
+            "apiSchema": kwargs.get("apiSchema", {}),
+            "knowledgeBaseConfiguration": kwargs.get("knowledgeBaseConfiguration", {}),
+            "promptOverrideConfiguration": kwargs.get("promptOverrideConfiguration", {}),
+            "sessionAttributes": kwargs.get("sessionAttributes", {}),
+            "sessionState": kwargs.get("sessionState", {}),
+        })
+        # Use invoke_agent_with_response_stream for inline agents
+        response = bedrock_rt_client.invoke_agent_with_response_stream(**invoke_params)
+    else:
+        # Regular agent invocation
+        if use_streaming:
+            invoke_params["streamingConfigurations"] = {
+                "applyGuardrailInterval": 10,
+                "streamFinalResponse": use_streaming,
+            }
+        response = bedrock_rt_client.invoke_agent(**invoke_params)
+    
     return response
 
 def process_streaming_response(stream):
@@ -73,7 +91,7 @@ if __name__ == "__main__":
         environment = config["langfuse"]["environment"]
         langfuse_public_key = config["langfuse"]["langfuse_public_key"]
         langfuse_secret_key = config["langfuse"]["langfuse_secret_key"]
-        langfuse_api_url = "https://us.cloud.langfuse.com"
+        langfuse_api_url = config["langfuse"]["langfuse_api_url"]
         
         # Create auth header
         auth_token = base64.b64encode(
@@ -87,6 +105,7 @@ if __name__ == "__main__":
     # Agent configuration
     agentId = config["agent"]["agentId"]
     agentAliasId = config["agent"]["agentAliasId"]
+    is_inline_agent = config["agent"].get("is_inline_agent", False)
     sessionId = f"session-{int(time.time())}"
 
     # User information
@@ -95,35 +114,53 @@ if __name__ == "__main__":
     
     # Tags for filtering in Langfuse
     tags = ["bedrock-agent", "example", "development"]
+    if is_inline_agent:
+        tags.append("inline-agent")
     
     # Generate a custom trace ID
     trace_id = str(uuid.uuid4())
     
     # Prompt
-    question = config["question"]["question"] # your prompt to the agent
-    streaming = False # Set streaming mode: True for streaming final response, False for non-streaming
+    question = config["question"]["question"]
+    streaming = False
+
+    # Prepare agent parameters
+    agent_params = {
+        "inputText": question,
+        "agentId": agentId,
+        "agentAliasId": agentAliasId,
+        "sessionId": sessionId,
+        "show_traces": True,
+        "SAVE_TRACE_LOGS": True,
+        "userId": userId,
+        "tags": tags,
+        "trace_id": trace_id,
+        "project_name": project_name,
+        "environment": environment,
+        "langfuse_public_key": langfuse_public_key,
+        "langfuse_secret_key": langfuse_secret_key,
+        "langfuse_api_url": langfuse_api_url,
+        "streaming": streaming,
+        "model_id": agent_model_id,
+        "is_inline_agent": is_inline_agent
+    }
+
+    # Add inline agent specific parameters if needed
+    if is_inline_agent:
+        agent_params.update({
+            "agentVersion": config["agent"].get("agentVersion", "DRAFT"),
+            "actionGroupExecutor": config["agent"].get("actionGroupExecutor", {}),
+            "apiSchema": config["agent"].get("apiSchema", {}),
+            "knowledgeBaseConfiguration": config["agent"].get("knowledgeBaseConfiguration", {}),
+            "promptOverrideConfiguration": config["agent"].get("promptOverrideConfiguration", {}),
+            "sessionAttributes": config["agent"].get("sessionAttributes", {}),
+            "sessionState": config["agent"].get("sessionState", {})
+        })
 
     # Single invocation that works for both streaming and non-streaming
-    response = invoke_bedrock_agent(
-        inputText=question,
-        agentId=agentId,
-        agentAliasId=agentAliasId,
-        sessionId=sessionId,
-        show_traces=True,
-        SAVE_TRACE_LOGS=True,
-        userId=userId,
-        tags=tags,
-        trace_id=trace_id,
-        project_name=project_name,
-        environment=environment,
-        langfuse_public_key=langfuse_public_key,
-        langfuse_secret_key=langfuse_secret_key,
-        langfuse_api_url=langfuse_api_url,
-        streaming=streaming,
-        model_id=agent_model_id,
-    )
+    response = invoke_bedrock_agent(**agent_params)
 
-    # Handle the response appropriately based on streaming mode
+    # Handle the response appropriately based on streaming mode and agent type
     if isinstance(response, dict) and "error" in response:
         print(f"\nError: {response['error']}")
     elif streaming and isinstance(response, dict) and "completion" in response:

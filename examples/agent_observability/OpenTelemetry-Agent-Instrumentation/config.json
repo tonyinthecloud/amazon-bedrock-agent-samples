@@ -1,20 +1,28 @@
 {
-    "langfuse": {
-        "project_name" : "",
-        "environment" : "",
-        "langfuse_public_key": "",
-        "langfuse_secret_key" : "",
-        "langfuse_api_url" : "https://us.cloud.langfuse.com/api/public/otel" // or docker container URL 
-    },
     "agent": {
-        "agentId" : "", 
-        "agentAliasId" : ""
+        "agentId": "YOUR_AGENT_ID",
+        "agentAliasId": "YOUR_AGENT_ALIAS_ID",
+        "is_inline_agent": false,
+        "agentVersion": "DRAFT",
+        "actionGroupExecutor": {},
+        "apiSchema": {},
+        "knowledgeBaseConfiguration": {},
+        "promptOverrideConfiguration": {},
+        "sessionAttributes": {},
+        "sessionState": {}
     },
     "user": {
-        "userId" : "",
-        "agent_model_id" : ""
+        "userId": "YOUR_USER_ID",
+        "agent_model_id": "YOUR_MODEL_ID"
     },
     "question": {
-        "question" : ""
+        "question": "YOUR_QUESTION"
+    },
+    "langfuse": {
+        "project_name": "YOUR_PROJECT_NAME",
+        "environment": "development",
+        "langfuse_public_key": "YOUR_PUBLIC_KEY",
+        "langfuse_secret_key": "YOUR_SECRET_KEY",
+        "langfuse_api_url": "https://us.cloud.langfuse.com/"
     }
 }
