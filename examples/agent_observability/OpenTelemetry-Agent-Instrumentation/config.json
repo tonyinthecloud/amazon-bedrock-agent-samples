@@ -4,6 +4,8 @@
         "agentAliasId": "YOUR_AGENT_ALIAS_ID",
         "is_inline_agent": false,
         "agentVersion": "DRAFT",
+        "instructions": "YOUR_AGENT_INSTRUCTIONS",
+        "foundationModel": "anthropic.claude-3-sonnet-20240229-v1:0",
         "actionGroupExecutor": {},
         "apiSchema": {},
         "knowledgeBaseConfiguration": {},

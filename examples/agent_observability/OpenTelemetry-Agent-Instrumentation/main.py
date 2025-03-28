@@ -21,27 +21,42 @@ def invoke_bedrock_agent(
     # Base parameters for both agent types
     invoke_params = {
         "inputText": inputText,
-        "agentId": agentId,
-        "agentAliasId": agentAliasId,
         "sessionId": sessionId,
         "enableTrace": True,  # Required for instrumentation
     }
 
     # Add inline agent specific parameters if needed
     if is_inline_agent:
+        # Required parameters for inline agents
         invoke_params.update({
+            "instructions": kwargs.get("instructions", ""),
+            "foundationModel": kwargs.get("foundationModel", ""),
             "agentVersion": kwargs.get("agentVersion", "DRAFT"),
-            "actionGroupExecutor": kwargs.get("actionGroupExecutor", {}),
-            "apiSchema": kwargs.get("apiSchema", {}),
-            "knowledgeBaseConfiguration": kwargs.get("knowledgeBaseConfiguration", {}),
-            "promptOverrideConfiguration": kwargs.get("promptOverrideConfiguration", {}),
-            "sessionAttributes": kwargs.get("sessionAttributes", {}),
-            "sessionState": kwargs.get("sessionState", {}),
         })
+        
+        # Optional parameters for inline agents
+        if kwargs.get("actionGroupExecutor"):
+            invoke_params["actionGroupExecutor"] = kwargs.get("actionGroupExecutor", {})
+        if kwargs.get("apiSchema"):
+            invoke_params["apiSchema"] = kwargs.get("apiSchema", {})
+        if kwargs.get("knowledgeBaseConfiguration"):
+            invoke_params["knowledgeBaseConfiguration"] = kwargs.get("knowledgeBaseConfiguration", {})
+        if kwargs.get("promptOverrideConfiguration"):
+            invoke_params["promptOverrideConfiguration"] = kwargs.get("promptOverrideConfiguration", {})
+        if kwargs.get("sessionAttributes"):
+            invoke_params["sessionAttributes"] = kwargs.get("sessionAttributes", {})
+        if kwargs.get("sessionState"):
+            invoke_params["sessionState"] = kwargs.get("sessionState", {})
+            
         # Use invoke_agent_with_response_stream for inline agents
         response = bedrock_rt_client.invoke_agent_with_response_stream(**invoke_params)
     else:
-        # Regular agent invocation
+        # Regular agent invocation requires agentId and agentAliasId
+        invoke_params.update({
+            "agentId": agentId,
+            "agentAliasId": agentAliasId,
+        })
+        
         if use_streaming:
             invoke_params["streamingConfigurations"] = {
                 "applyGuardrailInterval": 10,
@@ -148,6 +163,8 @@ if __name__ == "__main__":
     # Add inline agent specific parameters if needed
     if is_inline_agent:
         agent_params.update({
+            "instructions": config["agent"]["instructions"],
+            "foundationModel": config["agent"]["foundationModel"],
             "agentVersion": config["agent"].get("agentVersion", "DRAFT"),
             "actionGroupExecutor": config["agent"].get("actionGroupExecutor", {}),
             "apiSchema": config["agent"].get("apiSchema", {}),
